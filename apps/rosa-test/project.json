@@ -1,0 +1,74 @@
+{
+  "name": "rosa-test",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/rosa-test/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/webpack:webpack",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "target": "node",
+        "compiler": "tsc",
+        "outputPath": "dist/apps/rosa-test",
+        "main": "apps/rosa-test/src/main.ts",
+        "tsConfig": "apps/rosa-test/tsconfig.app.json",
+        "assets": [
+          "apps/rosa-test/src/assets"
+        ],
+        "isolatedConfig": true,
+        "webpackConfig": "apps/rosa-test/webpack.config.js"
+      },
+      "configurations": {
+        "development": {},
+        "production": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "rosa-test:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "rosa-test:build:development"
+        },
+        "production": {
+          "buildTarget": "rosa-test:build:production"
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": [
+        "{options.outputFile}"
+      ],
+      "options": {
+        "lintFilePatterns": [
+          "apps/rosa-test/**/*.ts"
+        ]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
+      "options": {
+        "jestConfig": "apps/rosa-test/jest.config.ts",
+        "passWithNoTests": true
+      },
+      "configurations": {
+        "ci": {
+          "ci": true,
+          "codeCoverage": true
+        }
+      }
+    }
+  },
+  "tags": []
+}
