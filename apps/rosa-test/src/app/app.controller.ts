@@ -11,7 +11,7 @@ export class AppController {
         return this.appService.getAvailabilities(body.from, body.to);
     }
 
-    @Post('/next-availability')
+    @Post('/next')
     getNextAvailability(@Body() body: { from: Date }) {
         return this.appService.getNextAvailability(body.from);
     }
