@@ -98,4 +98,8 @@ export class AppService {
 
         return availabilities;
     }
+
+    getNextAvailability(date: Date): TimeSlot {
+        return;
+    }
 }
