@@ -99,7 +99,53 @@ export class AppService {
         return availabilities;
     }
 
+    /**
+     * Returns the next available time slot after the given date.
+     * @param date The date after which to search for the next available time slot.
+     * @returns The next available time slot.
+     */
     getNextAvailability(date: Date): TimeSlot {
-        return;
+        // Binary search to find the index of the first appointment on or after the given date
+        let start = 0;
+        let end = this.existingAppointments.length - 1;
+        while (start <= end) {
+            const mid = Math.floor((start + end) / 2);
+            if (new Date(this.existingAppointments[mid].date) < date) {
+                start = mid + 1;
+            } else {
+                end = mid - 1;
+            }
+        }
+
+        // Iterate over the appointments starting from the found index
+        for (let i = start; i < this.existingAppointments.length; i++) {
+            const appointments = this.existingAppointments[i].appointments;
+
+            let currentTime = this.dailyAvailability.start;
+
+            while (currentTime < this.dailyAvailability.end) {
+                const currentSlot: TimeSlot = {
+                    startAt: addMinutes(new Date(date), currentTime),
+                    endAt: addMinutes(new Date(date), currentTime + this.slotDuration),
+                };
+
+                if (
+                    !appointments.some(
+                        (appointment) =>
+                            isWithinInterval(currentSlot.startAt, {
+                                start: appointment.startAt,
+                                end: appointment.endAt,
+                            }) ||
+                            isWithinInterval(currentSlot.endAt, { start: appointment.startAt, end: appointment.endAt })
+                    )
+                ) {
+                    return currentSlot;
+                }
+
+                currentTime += this.slotDuration;
+            }
+        }
+
+        return null;
     }
 }
