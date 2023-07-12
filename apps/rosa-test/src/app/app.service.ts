@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { format } from 'date-fns';
 import { Appointment } from './interfaces/appointment.interface';
+import { TimeSlot } from './interfaces/timeSlot.interface';
+import { addMinutes, isWithinInterval, format } from 'date-fns';
 
 @Injectable()
 export class AppService {
@@ -48,5 +49,53 @@ export class AppService {
 
             this.existingAppointments.push({ date: format(date, 'yyyy-MM-dd'), appointments: appointments });
         }
+    }
+
+    /**
+     * Returns an array of available time slots between the given start and end dates.
+     * Each time slot is an object with a startAt and endAt property, both of which are Date objects.
+     *
+     * @param startDate The start date for the availability search.
+     * @param endDate The end date for the availability search.
+     * @returns An array of available time slots.
+     */
+    getAvailabilities(startDate: Date, endDate: Date): TimeSlot[] {
+        const availabilities = [];
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        for (let day = start; day.getTime() <= end.getTime(); day.setDate(day.getDate() + 1)) {
+            const appointments =
+                this.existingAppointments.find((appointment) => appointment.date === format(day, 'yyyy-MM-dd'))
+                    ?.appointments || [];
+
+            let currentTime = this.dailyAvailability.start;
+
+            while (currentTime < this.dailyAvailability.end) {
+                const currentSlot: TimeSlot = {
+                    startAt: addMinutes(new Date(day), currentTime),
+                    endAt: addMinutes(new Date(day), currentTime + this.slotDuration),
+                };
+
+                if (
+                    appointments.some(
+                        (appointment) =>
+                            isWithinInterval(currentSlot.startAt, {
+                                start: appointment.startAt,
+                                end: appointment.endAt,
+                            }) ||
+                            isWithinInterval(currentSlot.endAt, { start: appointment.startAt, end: appointment.endAt })
+                    )
+                ) {
+                    currentTime += this.slotDuration;
+                    continue;
+                }
+
+                availabilities.push(currentSlot);
+                currentTime += this.slotDuration;
+            }
+        }
+
+        return availabilities;
     }
 }
