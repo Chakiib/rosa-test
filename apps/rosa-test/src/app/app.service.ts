@@ -118,11 +118,35 @@ export class AppService {
         // Binary search to find the index of the first appointment on or after the given date
         let start = 0;
         let end = this.existingAppointments.length - 1;
+        let baseDate = dayjs.utc(date);
+
         while (start <= end) {
             const mid = Math.floor((start + end) / 2);
+
+            /**
+             * If the date of the appointment at the middle index is before the given date,
+             * search in the next half of the array.
+             */
             if (dayjs.utc(this.existingAppointments[mid].date).isBefore(dayjs.utc(date), 'day')) {
                 start = mid + 1;
+            } else if (
+                /**
+                 * If the date of the appointment at the middle index is the same as the given date
+                 * but the time is after the daily availability end, search in the next half of the array.
+                 */
+                dayjs.utc(this.existingAppointments[mid].date).isSame(dayjs.utc(date), 'day') &&
+                dayjs.utc(date).isAfter(dayjs.utc(date).startOf('day').add(this.dailyAvailability.end, 'minutes'))
+            ) {
+                start = mid + 1;
+
+                // Set the base date to the next day to search the correct date in the next iteration.
+                baseDate = baseDate.add(1, 'day');
             } else {
+                /**
+                 * If the date of the appointment at the middle index is the same as the given date
+                 * and the time is before the daily availability end or the date is after the given date,
+                 * search in the previous half of the array
+                 */
                 end = mid - 1;
             }
         }
@@ -133,7 +157,7 @@ export class AppService {
 
             let currentTime = this.dailyAvailability.start;
 
-            const startOfDay = dayjs.utc(date).startOf('day');
+            const startOfDay = baseDate.startOf('day');
             const dailyStart = startOfDay.add(this.dailyAvailability.start, 'minutes').toDate();
             const dailyEnd = startOfDay.add(this.dailyAvailability.end, 'minutes').toDate();
 
