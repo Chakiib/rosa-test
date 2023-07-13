@@ -236,9 +236,59 @@ describe('AppService', () => {
 
             expect(nextAvailability).toEqual(expectedNextAvailability);
         });
-    });
 
-    describe('getNextAvailability', () => {
+        it("should return the next available time slot for Tuesday when Monday's datetime is after dailyAvailability.end", () => {
+            // Mock the existingAppointments array
+            const existingAppointmentsMock = [
+                {
+                    date: '2023-07-10', // Monday
+                    appointments: [
+                        {
+                            startAt: new Date('2023-07-10T09:00:00Z'),
+                            endAt: new Date('2023-07-10T10:30:00Z'),
+                        },
+                        {
+                            startAt: new Date('2023-07-10T12:00:00Z'),
+                            endAt: new Date('2023-07-10T16:00:00Z'),
+                        },
+                        {
+                            startAt: new Date('2023-07-10T17:00:00Z'),
+                            endAt: new Date('2023-07-10T19:00:00Z'),
+                        },
+                    ],
+                },
+                {
+                    date: '2023-07-11', // Tuesday
+                    appointments: [
+                        {
+                            startAt: new Date('2023-07-11T09:00:00Z'),
+                            endAt: new Date('2023-07-11T11:00:00Z'),
+                        },
+                        {
+                            startAt: new Date('2023-07-11T18:00:00Z'),
+                            endAt: new Date('2023-07-11T20:00:00Z'),
+                        },
+                    ],
+                },
+            ];
+
+            service = new AppService();
+
+            // Replace the existingAppointments property with the mock
+            service['existingAppointments'] = existingAppointmentsMock;
+
+            const date = new Date('2023-07-10T21:00:00Z'); // Monday
+
+            const expectedNextAvailability = {
+                startAt: new Date('2023-07-11T11:00:00Z'), // Tuesday
+                endAt: new Date('2023-07-11T11:30:00Z'),
+            };
+
+            const nextAvailability = service.getNextAvailability(date);
+
+            expect(nextAvailability).toEqual(expectedNextAvailability);
+        });
+
         it('should return the next available time slot for Tuesday', () => {
             // Mock the existingAppointments array
             const existingAppointmentsMock = [
