@@ -80,16 +80,31 @@ export class AppService {
             let currentTime = this.dailyAvailability.start;
 
             while (currentTime < this.dailyAvailability.end) {
+                /**
+                 * Create a time slot object for the current time.
+                 * The startAt and endAt properties are Date objects.
+                 * The startAt is the current time and the endAt is the current time plus the slot duration.
+                 */
                 const currentSlot: TimeSlot = {
                     startAt: new Date(day.getTime() + currentTime * 60000),
                     endAt: new Date(day.getTime() + (currentTime + this.slotDuration) * 60000),
                 };
 
+                /**
+                 * Check if there are any appointments that overlap with the current time slot.
+                 */
                 const overlappingAppointments = appointments.filter(
                     (appointment) => appointment.startAt < currentSlot.endAt && currentSlot.startAt < appointment.endAt
                 );
 
+                /**
+                 * If there are no overlapping appointments, add the current time slot to the availabilities array.
+                 */
                 if (overlappingAppointments.length === 0) {
+                    /**
+                     * If the current time slot is adjacent to the last available slot in the availabilities array,
+                     * extend the end time of the last available slot instead of adding a new one.
+                     */
                     if (
                         availabilities.length > 0 &&
                         availabilities[availabilities.length - 1].endAt.getTime() === currentSlot.startAt.getTime()
@@ -102,6 +117,7 @@ export class AppService {
                     }
                 }
 
+                // Increment the current time by the slot duration
                 currentTime += this.slotDuration;
             }
         }
@@ -161,12 +177,22 @@ export class AppService {
             const dailyStart = startOfDay.add(this.dailyAvailability.start, 'minutes').toDate();
             const dailyEnd = startOfDay.add(this.dailyAvailability.end, 'minutes').toDate();
 
+            /**
+             * Iterate over the time slots of the current day until we find an available time slot.
+             * If there are no available time slots on the current day, we move on to the next day.
+             */
             while (currentTime < this.dailyAvailability.end) {
                 const currentSlot: TimeSlot = {
                     startAt: startOfDay.add(currentTime, 'minutes').toDate(),
                     endAt: startOfDay.add(currentTime + this.slotDuration, 'minutes').toDate(),
                 };
 
+                /**
+                 * Check if there are any appointments that overlap with the current time slot.
+                 * If there are no overlapping appointments and the current time slot is within the daily availability,
+                 * return the current time slot.
+                 * Otherwise, move on to the next time slot.
+                 */
                 if (
                     !appointments.some(
                         (appointment) =>
@@ -187,6 +213,10 @@ export class AppService {
             }
         }
 
+        /**
+         * If we reach this point, it means there are no available time slots after the given date.
+         * So, we return null.
+         */
         return null;
     }
 }
