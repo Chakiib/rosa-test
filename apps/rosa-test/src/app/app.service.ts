@@ -11,9 +11,9 @@ export class AppService {
      * For the sake of simplicity, we will set a unique daily availability
      * The start and end properties are specified in minutes from midnight.
      * So, start: 570 means the professional starts working at 570 minutes past midnight, which is 9:30 AM (since 570min = 9hours30min).
-     * Similarly, end: 1080 means the professional finishes working at 1080 minutes past midnight, which is 6:00 PM (since 1080min = 18hours).
+     * Similarly, end: 1200 means the professional finishes working at 1200 minutes past midnight, which is 6:00 PM (since 1200min = 20hours).
      */
-    private dailyAvailability = { start: 570, end: 1080 }; // 9:30 to 18:00
+    private dailyAvailability = { start: 570, end: 1200 }; // 9:30 to 20:00
 
     /**
      * Same slot duration for all appointments, in minutes
@@ -60,38 +60,40 @@ export class AppService {
      * @returns An array of available time slots.
      */
     getAvailabilities(startDate: Date, endDate: Date): TimeSlot[] {
-        const availabilities = [];
+        const availabilities: TimeSlot[] = [];
         const start = new Date(startDate);
         const end = new Date(endDate);
 
-        for (let day = start; day.getTime() <= end.getTime(); day.setDate(day.getDate() + 1)) {
+        for (let day = new Date(start); day.getTime() <= end.getTime(); day.setDate(day.getDate() + 1)) {
             const appointments =
-                this.existingAppointments.find((appointment) => appointment.date === format(day, 'yyyy-MM-dd'))
+                this.existingAppointments.find((appointment) => appointment.date === day.toISOString().split('T')[0])
                     ?.appointments || [];
 
             let currentTime = this.dailyAvailability.start;
 
             while (currentTime < this.dailyAvailability.end) {
                 const currentSlot: TimeSlot = {
-                    startAt: addMinutes(new Date(day), currentTime),
-                    endAt: addMinutes(new Date(day), currentTime + this.slotDuration),
+                    startAt: new Date(day.getTime() + currentTime * 60000),
+                    endAt: new Date(day.getTime() + (currentTime + this.slotDuration) * 60000),
                 };
 
-                if (
-                    appointments.some(
-                        (appointment) =>
-                            isWithinInterval(currentSlot.startAt, {
-                                start: appointment.startAt,
-                                end: appointment.endAt,
-                            }) ||
-                            isWithinInterval(currentSlot.endAt, { start: appointment.startAt, end: appointment.endAt })
-                    )
-                ) {
-                    currentTime += this.slotDuration;
-                    continue;
+                const overlappingAppointments = appointments.filter(
+                    (appointment) => appointment.startAt < currentSlot.endAt && currentSlot.startAt < appointment.endAt
+                );
+
+                if (overlappingAppointments.length === 0) {
+                    if (
+                        availabilities.length > 0 &&
+                        availabilities[availabilities.length - 1].endAt.getTime() === currentSlot.startAt.getTime()
+                    ) {
+                        // Extend the end time of the last available slot
+                        availabilities[availabilities.length - 1].endAt = currentSlot.endAt;
+                    } else {
+                        // Add a new available slot
+                        availabilities.push(currentSlot);
+                    }
                 }
 
-                availabilities.push(currentSlot);
                 currentTime += this.slotDuration;
             }
         }
