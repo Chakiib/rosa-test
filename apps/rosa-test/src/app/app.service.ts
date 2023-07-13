@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
+import utc from 'dayjs/plugin/utc';
 import { Appointment } from './interfaces/appointment.interface';
 import { TimeSlot } from './interfaces/timeSlot.interface';
-import { addMinutes, isWithinInterval, format } from 'date-fns';
+
+dayjs.extend(utc);
+dayjs.extend(isBetween);
 
 @Injectable()
 export class AppService {
@@ -47,7 +52,10 @@ export class AppService {
                 });
             }
 
-            this.existingAppointments.push({ date: format(date, 'yyyy-MM-dd'), appointments: appointments });
+            this.existingAppointments.push({
+                date: dayjs(date, 'yyyy-MM-dd').toISOString(),
+                appointments: appointments,
+            });
         }
     }
 
@@ -106,13 +114,13 @@ export class AppService {
      * @param date The date after which to search for the next available time slot.
      * @returns The next available time slot.
      */
-    getNextAvailability(date: Date): TimeSlot {
+    getNextAvailability(date: Date): TimeSlot | null {
         // Binary search to find the index of the first appointment on or after the given date
         let start = 0;
         let end = this.existingAppointments.length - 1;
         while (start <= end) {
             const mid = Math.floor((start + end) / 2);
-            if (new Date(this.existingAppointments[mid].date) < date) {
+            if (dayjs.utc(this.existingAppointments[mid].date).isBefore(dayjs.utc(date), 'day')) {
                 start = mid + 1;
             } else {
                 end = mid - 1;
@@ -125,21 +133,28 @@ export class AppService {
 
             let currentTime = this.dailyAvailability.start;
 
+            const startOfDay = dayjs.utc(date).startOf('day');
+            const dailyStart = startOfDay.add(this.dailyAvailability.start, 'minutes').toDate();
+            const dailyEnd = startOfDay.add(this.dailyAvailability.end, 'minutes').toDate();
+
             while (currentTime < this.dailyAvailability.end) {
                 const currentSlot: TimeSlot = {
-                    startAt: addMinutes(new Date(date), currentTime),
-                    endAt: addMinutes(new Date(date), currentTime + this.slotDuration),
+                    startAt: startOfDay.add(currentTime, 'minutes').toDate(),
+                    endAt: startOfDay.add(currentTime + this.slotDuration, 'minutes').toDate(),
                 };
 
                 if (
                     !appointments.some(
                         (appointment) =>
-                            isWithinInterval(currentSlot.startAt, {
-                                start: appointment.startAt,
-                                end: appointment.endAt,
-                            }) ||
-                            isWithinInterval(currentSlot.endAt, { start: appointment.startAt, end: appointment.endAt })
-                    )
+                            dayjs
+                                .utc(currentSlot.startAt)
+                                .isBetween(dayjs.utc(appointment.startAt), dayjs.utc(appointment.endAt)) ||
+                            dayjs
+                                .utc(currentSlot.endAt)
+                                .isBetween(dayjs.utc(appointment.startAt), dayjs.utc(appointment.endAt))
+                    ) &&
+                    currentSlot.startAt >= dailyStart &&
+                    currentSlot.endAt <= dailyEnd
                 ) {
                     return currentSlot;
                 }
