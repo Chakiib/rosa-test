@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import utc from 'dayjs/plugin/utc';
-import { Appointment } from './interfaces/appointment.interface';
 import { TimeSlot } from './interfaces/timeSlot.interface';
 
 dayjs.extend(utc);
@@ -10,7 +9,7 @@ dayjs.extend(isBetween);
 
 @Injectable()
 export class AppService {
-    private existingAppointments: Appointment[] = [];
+    private existingAppointments: Map<string, TimeSlot[]> = new Map<string, TimeSlot[]>();
 
     /**
      * For the sake of simplicity, we will set a unique daily availability
@@ -52,10 +51,8 @@ export class AppService {
                 });
             }
 
-            this.existingAppointments.push({
-                date: dayjs(date, 'yyyy-MM-dd').toISOString(),
-                appointments: appointments,
-            });
+            const isoDate = dayjs(date, 'yyyy-MM-dd').toISOString();
+            this.existingAppointments.set(isoDate, appointments);
         }
     }
 
@@ -73,9 +70,7 @@ export class AppService {
         const end = new Date(endDate);
 
         for (let day = new Date(start); day.getTime() <= end.getTime(); day.setDate(day.getDate() + 1)) {
-            const appointments =
-                this.existingAppointments.find((appointment) => appointment.date === day.toISOString().split('T')[0])
-                    ?.appointments || [];
+            const appointments = this.existingAppointments.get(day.toISOString().split('T')[0]) || [];
 
             let currentTime = this.dailyAvailability.start;
 
@@ -131,68 +126,31 @@ export class AppService {
      * @returns The next available time slot.
      */
     getNextAvailability(date: Date): TimeSlot | null {
-        // Binary search to find the index of the first appointment on or after the given date
-        let start = 0;
-        let end = this.existingAppointments.length - 1;
         let baseDate = dayjs.utc(date);
 
-        while (start <= end) {
-            const mid = Math.floor((start + end) / 2);
-
-            /**
-             * If the date of the appointment at the middle index is before the given date,
-             * search in the next half of the array.
-             */
-            if (dayjs.utc(this.existingAppointments[mid].date).isBefore(dayjs.utc(date), 'day')) {
-                start = mid + 1;
-            } else if (
-                /**
-                 * If the date of the appointment at the middle index is the same as the given date
-                 * but the time is after the daily availability end, search in the next half of the array.
-                 */
-                dayjs.utc(this.existingAppointments[mid].date).isSame(dayjs.utc(date), 'day') &&
-                dayjs.utc(date).isAfter(dayjs.utc(date).startOf('day').add(this.dailyAvailability.end, 'minutes'))
-            ) {
-                start = mid + 1;
-
-                // Set the base date to the next day to search the correct date in the next iteration.
-                baseDate = baseDate.add(1, 'day');
-            } else {
-                /**
-                 * If the date of the appointment at the middle index is the same as the given date
-                 * and the time is before the daily availability end or the date is after the given date,
-                 * search in the previous half of the array
-                 */
-                end = mid - 1;
-            }
+        if (dayjs.utc(date).isAfter(dayjs.utc(date).startOf('day').add(this.dailyAvailability.end, 'minutes'))) {
+            baseDate = baseDate.add(1, 'day');
         }
 
-        // Iterate over the appointments starting from the found index
-        for (let i = start; i < this.existingAppointments.length; i++) {
-            const appointments = this.existingAppointments[i].appointments;
+        // Iterate over the appointments starting from the given date
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            const dateKey = baseDate.format('YYYY-MM-DD');
+            const appointments = this.existingAppointments.has(dateKey) ? this.existingAppointments.get(dateKey) : [];
 
             let currentTime = this.dailyAvailability.start;
-
             const startOfDay = baseDate.startOf('day');
             const dailyStart = startOfDay.add(this.dailyAvailability.start, 'minutes').toDate();
             const dailyEnd = startOfDay.add(this.dailyAvailability.end, 'minutes').toDate();
 
-            /**
-             * Iterate over the time slots of the current day until we find an available time slot.
-             * If there are no available time slots on the current day, we move on to the next day.
-             */
+            // Iterate over the time slots of the current day until we find an available time slot.
             while (currentTime < this.dailyAvailability.end) {
                 const currentSlot: TimeSlot = {
                     startAt: startOfDay.add(currentTime, 'minutes').toDate(),
                     endAt: startOfDay.add(currentTime + this.slotDuration, 'minutes').toDate(),
                 };
 
-                /**
-                 * Check if there are any appointments that overlap with the current time slot.
-                 * If there are no overlapping appointments and the current time slot is within the daily availability,
-                 * return the current time slot.
-                 * Otherwise, move on to the next time slot.
-                 */
+                // Check if there are any appointments that overlap with the current time slot.
                 if (
                     !appointments.some(
                         (appointment) =>
@@ -211,11 +169,15 @@ export class AppService {
 
                 currentTime += this.slotDuration;
             }
+
+            // Move on to the next day
+            baseDate = baseDate.add(1, 'day');
         }
 
         /**
-         * If we reach this point, it means there are no available time slots after the given date.
-         * So, we return null.
+         * Realistically, this point in the code will never be reached as the function will either find an
+         * available timeslot and return it or it will run indefinitely.
+         * You may want to add a maximum date or maximum number of iterations and return null if those are exceeded.
          */
         return null;
     }

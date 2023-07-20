@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 
 import { AppService } from './app.service';
+import { TimeSlot } from './interfaces/timeSlot.interface';
 
 describe('AppService', () => {
     let service: AppService;
@@ -44,7 +45,17 @@ describe('AppService', () => {
             service = new AppService();
 
             // Replace the existingAppointments property with the mock
-            service['existingAppointments'] = existingAppointmentsMock;
+            const map = new Map<string, TimeSlot[]>();
+            existingAppointmentsMock.forEach((appointment) => {
+                const timeSlots: TimeSlot[] = appointment.appointments.map((a) => ({
+                    startAt: a.startAt,
+                    endAt: a.endAt,
+                }));
+
+                map.set(appointment.date, timeSlots);
+            });
+
+            service['existingAppointments'] = map;
 
             const startDate = new Date('2023-07-10T00:00:00Z'); // Monday
             const endDate = new Date('2023-07-11T23:59:59Z'); // Tuesday
@@ -142,7 +153,17 @@ describe('AppService', () => {
             service = new AppService();
 
             // Replace the existingAppointments property with the mock
-            service['existingAppointments'] = existingAppointmentsMock;
+            const map = new Map<string, TimeSlot[]>();
+            existingAppointmentsMock.forEach((appointment) => {
+                const timeSlots: TimeSlot[] = appointment.appointments.map((a) => ({
+                    startAt: a.startAt,
+                    endAt: a.endAt,
+                }));
+
+                map.set(appointment.date, timeSlots);
+            });
+
+            service['existingAppointments'] = map;
 
             const startDate = new Date('2023-07-10T00:00:00Z'); // Monday
             const endDate = new Date('2023-07-14T23:59:59Z'); // Friday
@@ -223,7 +244,17 @@ describe('AppService', () => {
             service = new AppService();
 
             // Replace the existingAppointments property with the mock
-            service['existingAppointments'] = existingAppointmentsMock;
+            const map = new Map<string, TimeSlot[]>();
+            existingAppointmentsMock.forEach((appointment) => {
+                const timeSlots: TimeSlot[] = appointment.appointments.map((a) => ({
+                    startAt: a.startAt,
+                    endAt: a.endAt,
+                }));
+
+                map.set(appointment.date, timeSlots);
+            });
+
+            service['existingAppointments'] = map;
 
             const date = new Date('2023-07-10T10:00:00Z'); // Monday
 
@@ -275,7 +306,17 @@ describe('AppService', () => {
             service = new AppService();
 
             // Replace the existingAppointments property with the mock
-            service['existingAppointments'] = existingAppointmentsMock;
+            const map = new Map<string, TimeSlot[]>();
+            existingAppointmentsMock.forEach((appointment) => {
+                const timeSlots: TimeSlot[] = appointment.appointments.map((a) => ({
+                    startAt: a.startAt,
+                    endAt: a.endAt,
+                }));
+
+                map.set(appointment.date, timeSlots);
+            });
+
+            service['existingAppointments'] = map;
 
             const date = new Date('2023-07-10T21:00:00Z'); // Monday
 
@@ -319,7 +360,17 @@ describe('AppService', () => {
             service = new AppService();
 
             // Replace the existingAppointments property with the mock
-            service['existingAppointments'] = existingAppointmentsMock;
+            const map = new Map<string, TimeSlot[]>();
+            existingAppointmentsMock.forEach((appointment) => {
+                const timeSlots: TimeSlot[] = appointment.appointments.map((a) => ({
+                    startAt: a.startAt,
+                    endAt: a.endAt,
+                }));
+
+                map.set(appointment.date, timeSlots);
+            });
+
+            service['existingAppointments'] = map;
 
             const date = new Date('2023-07-11T07:00:00Z'); // Tuesday
 
